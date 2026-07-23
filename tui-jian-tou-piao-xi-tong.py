@@ -1,4 +1,4 @@
-import os
+﻿﻿﻿import os
 import json
 import sqlite3
 import smtplib
@@ -11,32 +11,15 @@ app = Flask(__name__)
 app.secret_key = 'ci_recommendation_system_secret_key_2024'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'tui-jian-shu-ju.json')
+DATA_FILE = os.path.join(os.path.dirname(BASE_DIR), '06-07-guo-du-wen-jian', 'tui-jian-shu-ju.json')
 DB_FILE = os.path.join(BASE_DIR, 'ci_recommendation.db')
-CONFIG_FILE = os.path.join(BASE_DIR, 'email_config.json')
-
-# PythonAnywhere上的站点URL，部署后需要修改
-SITE_URL = 'https://shouqiu.pythonanywhere.com'
 
 EMAIL_CONFIG = {
-    'smtp_server': 'smtp.qq.com',
-    'smtp_port': 465,
-    'smtp_ssl': True,
+    'smtp_server': 'smtp.office365.com',
+    'smtp_port': 587,
     'from_email': '',
     'password': ''
 }
-
-# 加载邮箱配置
-def load_email_config():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                saved_config = json.load(f)
-                EMAIL_CONFIG.update(saved_config)
-        except Exception:
-            pass
-
-load_email_config()
 
 NOTIFICATION_RECIPIENTS = ['daopeng.yang@cat.com']
 
@@ -49,11 +32,8 @@ def send_email_notification(to_email, subject, html_content):
         msg['To'] = to_email
         msg['Subject'] = subject
         msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-        if EMAIL_CONFIG.get('smtp_ssl', False):
-            server = smtplib.SMTP_SSL(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
-        else:
-            server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
-            server.starttls()
+        server = smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'])
+        server.starttls()
         server.login(EMAIL_CONFIG['from_email'], EMAIL_CONFIG['password'])
         server.sendmail(EMAIL_CONFIG['from_email'], to_email, msg.as_string())
         server.quit()
@@ -97,7 +77,7 @@ def send_rating_notification(ci_id, ci_title, rating_user, rating, comment):
                     </p>
                     {f'<p><strong>评价：</strong>{comment}</p>' if comment else ''}
                 </div>
-                <p><a href="{SITE_URL}/ci/{ci_id}" class="btn" target="_blank">查看详情</a></p>
+                <p><a href="https://shouqiu.pythonanywhere.com/ci/{ci_id}" class="btn" target="_blank">查看详情</a></p>
             </div>
         </div>
     </body>
@@ -496,5 +476,23 @@ def api_email_test():
                                       '<h2>测试邮件</h2><p>邮件通知功能测试成功！</p>')
     return jsonify({'success': success, 'message': '测试邮件发送成功' if success else '测试邮件发送失败'})
 
-# PythonAnywhere WSGI部署：模块加载时初始化数据库
-init_db()
+if __name__ == '__main__':
+    init_db()
+    print('=' * 60)
+    print('CI推荐投票系统启动中...')
+    print(f'数据文件: {DATA_FILE}')
+    print(f'数据库文件: {DB_FILE}')
+    print('=' * 60)
+    
+    import sys
+    debug_mode = '--debug' in sys.argv
+    print(f'调试模式: {debug_mode}')
+    
+    from werkzeug.serving import make_server
+    
+    server = make_server('0.0.0.0', 80, app, threaded=True)
+    print(f' * Running on http://127.0.0.1:80')
+    print(f' * Running on http://10.41.88.49:80')
+    print(f' * Public access: https://shouqiu.pythonanywhere.com')
+    print('Press CTRL+C to quit')
+    server.serve_forever()
