@@ -1,4 +1,4 @@
-﻿﻿﻿import os
+﻿﻿﻿﻿﻿﻿﻿﻿import os
 import json
 import sqlite3
 import smtplib
@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = 'ci_recommendation_system_secret_key_2024'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(os.path.dirname(BASE_DIR), '06-07-guo-du-wen-jian', 'tui-jian-shu-ju.json')
+DATA_FILE = os.path.join(BASE_DIR, 'tui-jian-shu-ju.json')
 DB_FILE = os.path.join(BASE_DIR, 'ci_recommendation.db')
 
 EMAIL_CONFIG = {
@@ -87,11 +87,20 @@ def send_rating_notification(ci_id, ci_title, rating_user, rating, comment):
         send_email_notification(email, subject, content)
 
 def load_recommendation_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data.get('items', [])
-    return []
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                items = data.get('items', [])
+                print(f'[DEBUG] 成功加载CI数据: {len(items)} 条')
+                return items
+        else:
+            print(f'[ERROR] 数据文件不存在: {DATA_FILE}')
+            return []
+    except Exception as e:
+        print(f'[ERROR] 加载数据文件失败: {str(e)}')
+        print(f'[ERROR] 文件路径: {DATA_FILE}')
+        return []
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -188,15 +197,17 @@ def get_recommendations_for_user(user_id, user_tags, user_department=None):
         
         cursor.execute('SELECT rating FROM ratings WHERE ci_id = ? AND user_id = ?', (ci['ci_id'], user_id))
         user_rating = cursor.fetchone()
-        cursor.execute('SELECT AVG(rating) as avg FROM ratings WHERE ci_id = ?', (ci['ci_id'],))
-        avg_result = cursor.fetchone()
-        avg_rating = round(avg_result['avg'], 1) if avg_result['avg'] else None
+        cursor.execute('SELECT AVG(rating) as avg, COUNT(*) as cnt FROM ratings WHERE ci_id = ?', (ci['ci_id'],))
+        rating_result = cursor.fetchone()
+        avg_rating = round(rating_result['avg'], 1) if rating_result['avg'] else None
+        rating_count = rating_result['cnt']
         recommendations.append({
             'ci_id': ci['ci_id'],
             'data': ci,
             'similarity': similarity,
             'user_rating': user_rating['rating'] if user_rating else None,
-            'avg_rating': avg_rating
+            'avg_rating': avg_rating,
+            'rating_count': rating_count
         })
     conn.close()
     recommendations.sort(key=lambda x: x['similarity'], reverse=True)
@@ -220,11 +231,24 @@ def index():
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],))
     user = cursor.fetchone()
+    
+    cursor.execute('SELECT COUNT(*) as cnt FROM ratings WHERE user_id = ?', (session['user_id'],))
+    rated_count = cursor.fetchone()['cnt']
+    
+    cursor.execute('SELECT COUNT(*) as total FROM ratings')
+    total_ratings = cursor.fetchone()['total']
+    
     conn.close()
+    
     user_tags = user['tags'].split(',') if user['tags'] else []
     user_department = user['department'] if user['department'] else None
     recommendations = get_recommendations_for_user(session['user_id'], user_tags, user_department)
-    return render_template('index.html', user_name=user['name'], recommendations=recommendations)
+    
+    ci_data = load_recommendation_data()
+    total_ci = len(ci_data)
+    
+    return render_template('index.html', user_name=user['name'], recommendations=recommendations,
+                           total_ci=total_ci, rated_count=rated_count, total_ratings=total_ratings)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -429,6 +453,21 @@ def admin_adjust():
 def api_ci_list():
     ci_data = load_recommendation_data()
     return jsonify(ci_data)
+
+@app.route('/debug')
+def debug_info():
+    ci_data = load_recommendation_data()
+    return jsonify({
+        'success': True,
+        'data_file_path': DATA_FILE,
+        'data_file_exists': os.path.exists(DATA_FILE),
+        'db_file_path': DB_FILE,
+        'db_file_exists': os.path.exists(DB_FILE),
+        'base_dir': BASE_DIR,
+        'ci_count': len(ci_data),
+        'sample_ci': ci_data[0]['ci_id'] if ci_data else None,
+        'error_log': []
+    })
 
 @app.route('/api/ratings/<ci_id>')
 def api_ratings(ci_id):
