@@ -51,6 +51,22 @@
         .btn-detail { background: #667eea; color: white; padding: 6px 15px; border-radius: 6px; text-decoration: none; font-size: 13px; transition: all 0.3s; }
         .btn-detail:hover { background: #5a6fd6; transform: translateY(-1px); }
         .rated-badge { background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        
+        .ci-meta { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 12px; font-size: 13px; color: #888; }
+        .meta-item { display: flex; align-items: center; gap: 4px; }
+        
+        .dimension-preview { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e9ecef; }
+        .dim-header { font-size: 13px; font-weight: 600; color: #007bff; margin-bottom: 12px; }
+        .dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+        .dim-name { width: 120px; color: #6c757d; flex-shrink: 0; }
+        .dim-bar-track { flex: 1; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; }
+        .dim-bar-fill { height: 100%; background: linear-gradient(90deg, #007bff, #6610f2); border-radius: 3px; transition: width 0.5s; }
+        .dim-score { width: 35px; text-align: right; color: #495057; font-weight: 600; }
+        
+        .benefits-section { background: #d4edda; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #c3e6cb; }
+        .benefits-header { font-size: 13px; font-weight: 600; color: #155724; margin-bottom: 10px; }
+        .benefits-content { font-size: 12px; color: #155724; line-height: 1.6; white-space: pre-line; }
+        
         .success-flash { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); animation: slideIn 0.3s ease-out; z-index: 1000; }
         @keyframes slideIn {
             from { transform: translateX(100px); opacity: 0; }
@@ -78,7 +94,7 @@
     <div class="container">
         <div class="stats-bar">
             <div class="stat-card">
-                <div class="value">100</div>
+                <div class="value">{{ total_ci }}</div>
                 <div class="label">推荐CI总数</div>
             </div>
             <div class="stat-card">
@@ -86,12 +102,12 @@
                 <div class="label">本次推荐</div>
             </div>
             <div class="stat-card">
-                <div class="value">0</div>
+                <div class="value">{{ rated_count }}</div>
                 <div class="label">已评分</div>
             </div>
             <div class="stat-card">
-                <div class="value">0</div>
-                <div class="label">待投票</div>
+                <div class="value">{{ total_ratings }}</div>
+                <div class="label">总评分数</div>
             </div>
         </div>
         {% for rec in recommendations %}
@@ -110,14 +126,45 @@
                 </div>
             </div>
             <div class="ci-category">{{ rec.data.main_category }} | {{ rec.data.problem_type }}</div>
+            
+            <div class="ci-meta">
+                <span class="meta-item">📅 {{ rec.data.suggest_date }}</span>
+                <span class="meta-item">🏭 {{ rec.data.value_stream }}</span>
+                <span class="meta-item">💡 {{ rec.data.ci_source }}</span>
+            </div>
+            
             <div class="ci-conclusion">{{ rec.data.management_conclusion }}</div>
+            
+            {% if rec.data.dimension_scores %}
+            <div class="dimension-preview">
+                <div class="dim-header">评分维度预览</div>
+                {% for dim, score in rec.data.dimension_scores.items() %}
+                <div class="dim-row">
+                    <span class="dim-name">{{ dim }}</span>
+                    <div class="dim-bar-track">
+                        <div class="dim-bar-fill" style="width: {{ score }}%"></div>
+                    </div>
+                    <span class="dim-score">{{ score }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if rec.data.quantified_benefits %}
+            <div class="benefits-section">
+                <div class="benefits-header">量化收益</div>
+                <div class="benefits-content">{{ rec.data.quantified_benefits }}</div>
+            </div>
+            {% endif %}
+            
             <div class="ci-tags">
                 {% for tag in rec.data.tags[:5] %}
                 <span class="tag">{{ tag }}</span>
                 {% endfor %}
             </div>
+            
             <div class="rating-section">
-                <div class="stars" data-ci-id="{{ rec.ci_id }}" data-current-rating="{{ rec.user_rating or 0 }}" data-avg-rating="{{ rec.avg_rating or 0 }}">
+                <div class="stars" data-ci-id="{{ rec.ci_id }}" data-current-rating="{{ rec.user_rating or 0 }}" data-avg-rating="{{ rec.avg_rating or 0 }}" data-rating-count="{{ rec.rating_count or 0 }}">
                     {% for i in range(1, 6) %}
                     <div class="star-wrapper" data-rating="{{ i }}">
                         <span class="star {{ 'active-filled' if rec.user_rating and i <= rec.user_rating else 'inactive' }}" data-rating="{{ i }}">★</span>
@@ -126,7 +173,7 @@
                 </div>
                 <div class="rating-info">
                     <span>平均: <strong id="avg-{{ rec.ci_id }}">{{ rec.avg_rating or '0.0' }}</strong>星</span>
-                    <span class="rating-count" id="count-{{ rec.ci_id }}">0</span>
+                    <span class="rating-count" id="count-{{ rec.ci_id }}">{{ rec.rating_count or 0 }}</span>
                     <a href="/ci/{{ rec.ci_id }}" class="btn-detail">详情</a>
                 </div>
             </div>
