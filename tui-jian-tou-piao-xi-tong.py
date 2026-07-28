@@ -454,6 +454,51 @@ def api_ci_list():
     ci_data = load_recommendation_data()
     return jsonify(ci_data)
 
+@app.route('/api/stats')
+def api_stats():
+    """提供图表和统计数据"""
+    ci_data = load_recommendation_data()
+    from collections import Counter
+    # CI级别分布
+    level_counts = Counter(ci.get('ci_level', '未知') for ci in ci_data)
+    level_dist = [{'name': k, 'value': v} for k, v in sorted(level_counts.items())]
+    # 问题类型分布
+    type_counts = Counter(ci.get('problem_type', '未知') for ci in ci_data)
+    type_dist = [{'name': k, 'value': v} for k, v in type_counts.most_common(8)]
+    # 价值流分布
+    vs_counts = Counter(ci.get('value_stream', '未知') for ci in ci_data)
+    vs_dist = [{'name': k, 'value': v} for k, v in vs_counts.most_common(6)]
+    # 评分分布
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT rating, COUNT(*) as cnt FROM ratings GROUP BY rating ORDER BY rating')
+    rating_dist = [{'rating': row['rating'], 'count': row['cnt']} for row in cursor.fetchall()]
+    cursor.execute('SELECT COUNT(*) as cnt FROM ratings')
+    total_ratings = cursor.fetchone()['cnt']
+    cursor.execute('SELECT COUNT(DISTINCT ci_id) as cnt FROM ratings')
+    rated_ci_count = cursor.fetchone()['cnt']
+    conn.close()
+    # AI评分区间分布
+    score_ranges = {'90-100': 0, '80-89': 0, '70-79': 0, '60-69': 0, '60以下': 0}
+    for ci in ci_data:
+        s = ci.get('total_score', 0)
+        if s >= 90: score_ranges['90-100'] += 1
+        elif s >= 80: score_ranges['80-89'] += 1
+        elif s >= 70: score_ranges['70-79'] += 1
+        elif s >= 60: score_ranges['60-69'] += 1
+        else: score_ranges['60以下'] += 1
+    score_dist = [{'name': k, 'value': v} for k, v in score_ranges.items()]
+    return jsonify({
+        'level_dist': level_dist,
+        'type_dist': type_dist,
+        'vs_dist': vs_dist,
+        'rating_dist': rating_dist,
+        'score_dist': score_dist,
+        'total_ci': len(ci_data),
+        'total_ratings': total_ratings,
+        'rated_ci_count': rated_ci_count
+    })
+
 @app.route('/debug')
 def debug_info():
     ci_data = load_recommendation_data()

@@ -4,94 +4,289 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CI推荐投票系统 - 首页</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        /* ===== CSS变量定义 ===== */
+        :root {
+            --bg-gradient: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 40%, #E0F6FF 100%);
+            --bg-solid: #E0F6FF;
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --card-border: rgba(255, 255, 255, 0.6);
+            --card-shadow: 0 8px 32px rgba(31, 135, 175, 0.15);
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent: #667eea;
+            --accent-hover: #5a6fd6;
+            --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --header-text: #fff;
+            --tag-bg: #e8f4fd;
+            --tag-color: #17a2b8;
+            --conclusion-bg: #f8f9fa;
+            --dim-bg: rgba(248, 249, 250, 0.8);
+            --dim-border: #e9ecef;
+            --benefits-bg: #d4edda;
+            --benefits-border: #c3e6cb;
+            --benefits-text: #155724;
+            --input-bg: #fff;
+            --star-color: #ffc107;
+            --success: #28a745;
+            --border: rgba(0,0,0,0.08);
+        }
+        [data-theme="dark"] {
+            --bg-gradient: linear-gradient(180deg, #0a0e27 0%, #1a1a3e 50%, #16213e 100%);
+            --bg-solid: #0a0e27;
+            --card-bg: rgba(22, 33, 62, 0.85);
+            --card-border: rgba(100, 149, 237, 0.2);
+            --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --text-primary: #e0e6ed;
+            --text-secondary: #a0aab5;
+            --text-muted: #6c757d;
+            --accent: #7b8cf5;
+            --accent-hover: #6b7ce5;
+            --header-bg: linear-gradient(135deg, #1a1a3e 0%, #16213e 100%);
+            --header-text: #e0e6ed;
+            --tag-bg: rgba(23, 162, 184, 0.15);
+            --tag-color: #4dd0e1;
+            --conclusion-bg: rgba(30, 40, 60, 0.8);
+            --dim-bg: rgba(30, 40, 60, 0.8);
+            --dim-border: rgba(100, 149, 237, 0.15);
+            --benefits-bg: rgba(40, 167, 69, 0.15);
+            --benefits-border: rgba(40, 167, 69, 0.3);
+            --benefits-text: #81c784;
+            --input-bg: rgba(30, 40, 60, 0.8);
+            --star-color: #ffd54f;
+            --success: #4caf50;
+            --border: rgba(100, 149, 237, 0.1);
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 18px; }
-        .header .user-info { font-size: 14px; }
-        .header a { color: white; text-decoration: none; margin-left: 15px; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 0 15px; }
-        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center; }
-        .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
-        .stat-card .label { font-size: 12px; color: #888; margin-top: 5px; }
-        .ci-card { background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 15px; transition: transform 0.3s, box-shadow 0.3s; }
-        .ci-card:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: var(--bg-solid);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background 0.5s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+        /* ===== 白天模式：蓝天背景 ===== */
+        .sky-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2; background: var(--bg-gradient);
+            transition: opacity 0.5s ease;
+        }
+        [data-theme="dark"] .sky-bg { opacity: 0; }
+        .cloud {
+            position: fixed; background: rgba(255,255,255,0.7); border-radius: 50px;
+            filter: blur(2px); z-index: -1;
+            animation: drift linear infinite;
+        }
+        [data-theme="dark"] .cloud { display: none; }
+        @keyframes drift {
+            from { transform: translateX(-200px); }
+            to { transform: translateX(calc(100vw + 200px)); }
+        }
+        /* ===== 夜晚模式：星空背景 ===== */
+        .starfield { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        [data-theme="dark"] .starfield { opacity: 1; }
+        .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle ease-in-out infinite; }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 6px rgba(255,255,255,0.8); }
+        }
+        /* ===== 流星效果 ===== */
+        .shooting-star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; opacity: 0; }
+        .shooting-star::before { content: ''; position: absolute; top: 0; left: 0; width: 80px; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent); transform: rotate(-45deg); transform-origin: 0 0; }
+        @keyframes shoot {
+            0% { opacity: 0; transform: translate(0, 0); }
+            10% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-300px, 300px); }
+        }
+        /* ===== 头部导航 ===== */
+        .header {
+            background: var(--header-bg);
+            color: var(--header-text);
+            padding: 12px 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            transition: background 0.5s ease;
+        }
+        .header h1 { font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .header h1 .logo { font-size: 22px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .header a { color: var(--header-text); text-decoration: none; font-size: 13px; padding: 6px 14px; border-radius: 6px; transition: all 0.3s; }
+        .header a:hover { background: rgba(255,255,255,0.15); }
+        /* ===== 主题切换按钮 ===== */
+        .theme-toggle {
+            width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1); cursor: pointer; font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .theme-toggle:hover { transform: rotate(180deg) scale(1.1); background: rgba(255,255,255,0.2); }
+        .theme-toggle .icon { transition: transform 0.4s; }
+        /* ===== 主容器 ===== */
+        .container { max-width: 1280px; margin: 0 auto; padding: 20px 15px; }
+        /* ===== 统计卡片栏 ===== */
+        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            padding: 18px 15px; border-radius: 14px;
+            box-shadow: var(--card-shadow);
+            text-align: center; position: relative; overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: fadeInUp 0.5s ease-out backwards;
+        }
+        .stat-card:nth-child(1) { animation-delay: 0.05s; }
+        .stat-card:nth-child(2) { animation-delay: 0.1s; }
+        .stat-card:nth-child(3) { animation-delay: 0.15s; }
+        .stat-card:nth-child(4) { animation-delay: 0.2s; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.2); }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--accent); transform: scaleX(0); transition: transform 0.4s; }
+        .stat-card:hover::before { transform: scaleX(1); }
+        .stat-card .value { font-size: 30px; font-weight: 800; color: var(--accent); }
+        .stat-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        /* ===== 工具栏 ===== */
+        .toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+        }
+        .toolbar-left { display: flex; gap: 10px; align-items: center; }
+        .toolbar h2 { font-size: 16px; color: var(--text-primary); }
+        .btn-toggle-rated {
+            background: var(--accent); color: #fff; border: none;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.3s; font-family: inherit;
+        }
+        .btn-toggle-rated:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.3); }
+        .btn-toggle-rated.active { background: var(--success); }
+        .btn-toggle-rated .icon { font-size: 16px; }
+        /* ===== 图表区域 ===== */
+        .charts-section {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;
+        }
+        .chart-card {
+            background: var(--card-bg); backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border); border-radius: 14px;
+            padding: 18px; box-shadow: var(--card-shadow);
+            animation: fadeInUp 0.6s ease-out 0.25s backwards;
+        }
+        .chart-card h3 { font-size: 14px; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .chart-wrapper { position: relative; height: 220px; }
+        /* ===== CI卡片 ===== */
+        .ci-card {
+            background: var(--card-bg); backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 14px; box-shadow: var(--card-shadow);
+            padding: 20px; margin-bottom: 14px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.5s ease-out backwards;
+        }
+        .ci-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.2); }
+        .ci-card.hidden-rated { display: none; }
         .ci-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         .ci-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .ci-id { font-size: 16px; font-weight: bold; color: #333; }
+        .ci-id { font-size: 16px; font-weight: bold; color: var(--text-primary); }
         .ci-level { padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
         .level-C { background: #fff3cd; color: #856404; }
         .level-D { background: #d1ecf1; color: #0c5460; }
         .level-E { background: #f8d7da; color: #721c24; }
+        [data-theme="dark"] .level-C { background: rgba(255,243,205,0.15); color: #ffe082; }
+        [data-theme="dark"] .level-D { background: rgba(209,236,241,0.15); color: #80deea; }
+        [data-theme="dark"] .level-E { background: rgba(248,215,218,0.15); color: #ef9a9a; }
         .ci-score { text-align: right; }
-        .total-score { font-size: 24px; font-weight: bold; color: #667eea; }
-        .score-label { font-size: 11px; color: #888; }
-        .ci-category { color: #666; font-size: 13px; margin-bottom: 8px; }
-        .ci-conclusion { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; line-height: 1.6; color: #555; font-size: 14px; }
+        .total-score { font-size: 26px; font-weight: bold; color: var(--accent); }
+        .score-label { font-size: 11px; color: var(--text-muted); }
+        .ci-category { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; }
+        .ci-meta { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
+        .meta-item { display: flex; align-items: center; gap: 4px; }
+        .ci-conclusion { background: var(--conclusion-bg); padding: 12px; border-radius: 8px; margin-bottom: 15px; line-height: 1.6; color: var(--text-secondary); font-size: 14px; }
+        .dimension-preview { background: var(--dim-bg); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--dim-border); }
+        .dim-header { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 12px; }
+        .dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+        .dim-name { width: 120px; color: var(--text-muted); flex-shrink: 0; }
+        .dim-bar-track { flex: 1; height: 6px; background: var(--dim-border); border-radius: 3px; overflow: hidden; }
+        .dim-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #6610f2); border-radius: 3px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dim-score { width: 35px; text-align: right; color: var(--text-primary); font-weight: 600; }
+        .benefits-section { background: var(--benefits-bg); padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--benefits-border); }
+        .benefits-header { font-size: 13px; font-weight: 600; color: var(--benefits-text); margin-bottom: 10px; }
+        .benefits-content { font-size: 12px; color: var(--benefits-text); line-height: 1.6; white-space: pre-line; }
         .ci-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; }
-        .tag { background: #e8f4fd; color: #17a2b8; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
-        .rating-section { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #eee; }
+        .tag { background: var(--tag-bg); color: var(--tag-color); padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        .rating-section { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid var(--border); }
         .stars { display: flex; gap: 4px; align-items: center; }
         .star-wrapper { position: relative; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
         .star { font-size: 26px; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; }
-        .star.inactive { color: #e0e0e0; }
-        .star.hover { color: #ffc107; transform: scale(1.15); }
-        .star.active { color: #ffc107; }
-        .star.active-filled { color: #ffc107; text-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
+        .star.inactive { color: var(--dim-border); }
+        .star.hover { color: var(--star-color); transform: scale(1.15); }
+        .star.active { color: var(--star-color); }
+        .star.active-filled { color: var(--star-color); text-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
         .star.voting { animation: starPulse 0.4s ease-in-out; }
-        @keyframes starPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-        }
-        .rating-info { font-size: 13px; color: #888; display: flex; align-items: center; gap: 10px; }
-        .rating-count { background: #667eea; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
-        .btn-detail { background: #667eea; color: white; padding: 6px 15px; border-radius: 6px; text-decoration: none; font-size: 13px; transition: all 0.3s; }
-        .btn-detail:hover { background: #5a6fd6; transform: translateY(-1px); }
-        .rated-badge { background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
-        
-        .ci-meta { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 12px; font-size: 13px; color: #888; }
-        .meta-item { display: flex; align-items: center; gap: 4px; }
-        
-        .dimension-preview { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e9ecef; }
-        .dim-header { font-size: 13px; font-weight: 600; color: #007bff; margin-bottom: 12px; }
-        .dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
-        .dim-name { width: 120px; color: #6c757d; flex-shrink: 0; }
-        .dim-bar-track { flex: 1; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; }
-        .dim-bar-fill { height: 100%; background: linear-gradient(90deg, #007bff, #6610f2); border-radius: 3px; transition: width 0.5s; }
-        .dim-score { width: 35px; text-align: right; color: #495057; font-weight: 600; }
-        
-        .benefits-section { background: #d4edda; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #c3e6cb; }
-        .benefits-header { font-size: 13px; font-weight: 600; color: #155724; margin-bottom: 10px; }
-        .benefits-content { font-size: 12px; color: #155724; line-height: 1.6; white-space: pre-line; }
-        
-        .success-flash { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); animation: slideIn 0.3s ease-out; z-index: 1000; }
-        @keyframes slideIn {
-            from { transform: translateX(100px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        @keyframes starPulse { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .rating-info { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+        .rating-count { background: var(--accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .btn-detail { background: var(--accent); color: white; padding: 6px 15px; border-radius: 6px; text-decoration: none; font-size: 13px; transition: all 0.3s; }
+        .btn-detail:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .rated-badge { background: var(--success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+        /* ===== 提示弹窗 ===== */
+        .success-flash { position: fixed; top: 80px; right: 20px; background: var(--success); color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); animation: slideIn 0.3s ease-out; z-index: 1000; }
+        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        /* ===== 加载动画 ===== */
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-solid); display: flex; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s; }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .loader { width: 50px; height: 50px; border: 4px solid var(--dim-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ===== 通用动画 ===== */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        /* ===== 撤销提示条 ===== */
+        .undo-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card-bg); backdrop-filter: blur(10px); border: 1px solid var(--card-border); color: var(--text-primary); padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 15px; z-index: 1000; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        .undo-bar button { background: var(--accent); color: #fff; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; }
+        .undo-bar button:hover { background: var(--accent-hover); }
+        /* ===== 响应式 ===== */
         @media (max-width: 768px) {
             .stats-bar { grid-template-columns: repeat(2, 1fr); }
+            .charts-section { grid-template-columns: 1fr; }
             .ci-header { flex-direction: column; gap: 10px; }
             .ci-title { flex-wrap: wrap; }
             .ci-score { text-align: left; }
             .rating-section { flex-direction: column; gap: 10px; align-items: flex-start; }
             .star { font-size: 24px; }
+            .header h1 { font-size: 15px; }
+            .header a { font-size: 12px; padding: 4px 10px; }
         }
     </style>
 </head>
 <body>
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+    </div>
+
+    <!-- 背景层 -->
+    <div class="sky-bg"></div>
+    <div class="starfield" id="starfield"></div>
+
+    <!-- 头部 -->
     <div class="header">
-        <h1>CI推荐投票系统</h1>
-        <div class="user-info">
-            欢迎, {{ user_name }}
+        <h1><span class="logo">🎯</span> CI推荐投票系统</h1>
+        <div class="header-right">
+            <span style="font-size:13px;">欢迎, {{ user_name }}</span>
             <a href="/admin">管理后台</a>
-            <a href="/logout">退出登录</a>
+            <a href="/logout">退出</a>
+            <button class="theme-toggle" id="themeToggle" title="切换主题">
+                <span class="icon" id="themeIcon">🌙</span>
+            </button>
         </div>
     </div>
+
     <div class="container">
+        <!-- 统计卡片 -->
         <div class="stats-bar">
             <div class="stat-card">
                 <div class="value">{{ total_ci }}</div>
@@ -110,14 +305,39 @@
                 <div class="label">总评分数</div>
             </div>
         </div>
+
+        <!-- 图表区域 -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>📊 CI级别分布</h3>
+                <div class="chart-wrapper"><canvas id="levelChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3>📈 AI评分区间分布</h3>
+                <div class="chart-wrapper"><canvas id="scoreChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <h2>📋 推荐列表</h2>
+            </div>
+            <button class="btn-toggle-rated" id="toggleRatedBtn">
+                <span class="icon">👁️</span>
+                <span id="toggleText">隐藏已评分</span>
+            </button>
+        </div>
+
+        <!-- CI卡片列表 -->
         {% for rec in recommendations %}
-        <div class="ci-card" id="ci-{{ rec.ci_id }}">
+        <div class="ci-card {% if rec.user_rating %}has-rating{% endif %}" id="ci-{{ rec.ci_id }}">
             <div class="ci-header">
                 <div class="ci-title">
                     <span class="ci-id">{{ rec.data.ci_id }}</span>
                     <span class="ci-level level-{{ rec.data.ci_level[0] }}">{{ rec.data.ci_level }}</span>
                     {% if rec.user_rating %}
-                    <span class="rated-badge">已评分</span>
+                    <span class="rated-badge">已评分 {{ rec.user_rating }}★</span>
                     {% endif %}
                 </div>
                 <div class="ci-score">
@@ -126,43 +346,35 @@
                 </div>
             </div>
             <div class="ci-category">{{ rec.data.main_category }} | {{ rec.data.problem_type }}</div>
-            
             <div class="ci-meta">
                 <span class="meta-item">📅 {{ rec.data.suggest_date }}</span>
                 <span class="meta-item">🏭 {{ rec.data.value_stream }}</span>
                 <span class="meta-item">💡 {{ rec.data.ci_source }}</span>
             </div>
-            
             <div class="ci-conclusion">{{ rec.data.management_conclusion }}</div>
-            
             {% if rec.data.dimension_scores %}
             <div class="dimension-preview">
                 <div class="dim-header">评分维度预览</div>
                 {% for dim, score in rec.data.dimension_scores.items() %}
                 <div class="dim-row">
                     <span class="dim-name">{{ dim }}</span>
-                    <div class="dim-bar-track">
-                        <div class="dim-bar-fill" style="width: {{ score }}%"></div>
-                    </div>
+                    <div class="dim-bar-track"><div class="dim-bar-fill" style="width: {{ score }}%"></div></div>
                     <span class="dim-score">{{ score }}</span>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
-            
             {% if rec.data.quantified_benefits %}
             <div class="benefits-section">
                 <div class="benefits-header">量化收益</div>
                 <div class="benefits-content">{{ rec.data.quantified_benefits }}</div>
             </div>
             {% endif %}
-            
             <div class="ci-tags">
                 {% for tag in rec.data.tags[:5] %}
                 <span class="tag">{{ tag }}</span>
                 {% endfor %}
             </div>
-            
             <div class="rating-section">
                 <div class="stars" data-ci-id="{{ rec.ci_id }}" data-current-rating="{{ rec.user_rating or 0 }}" data-avg-rating="{{ rec.avg_rating or 0 }}" data-rating-count="{{ rec.rating_count or 0 }}">
                     {% for i in range(1, 6) %}
@@ -180,7 +392,181 @@
         </div>
         {% endfor %}
     </div>
+
     <script>
+        /* ===== 主题切换 ===== */
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const savedTheme = localStorage.getItem('ci-theme') || 'light';
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeIcon.textContent = '☀️';
+        }
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.documentElement.removeAttribute('data-theme');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('ci-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('ci-theme', 'dark');
+            }
+            updateChartsTheme();
+        });
+
+        /* ===== 白天模式云朵 ===== */
+        function createClouds() {
+            const cloudConfigs = [
+                { top: '8%', size: 80, duration: 35, delay: 0 },
+                { top: '15%', size: 60, duration: 45, delay: 10 },
+                { top: '25%', size: 100, duration: 55, delay: 5 },
+                { top: '40%', size: 70, duration: 40, delay: 20 },
+            ];
+            cloudConfigs.forEach(c => {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.style.cssText = `top:${c.top};width:${c.size}px;height:${c.size*0.4}px;animation-duration:${c.duration}s;animation-delay:${c.delay}s;`;
+                document.body.appendChild(cloud);
+            });
+        }
+        createClouds();
+
+        /* ===== 夜晚模式星空 ===== */
+        function createStars() {
+            const starfield = document.getElementById('starfield');
+            const numStars = 120;
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2 + 1;
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                const duration = Math.random() * 3 + 1.5;
+                const delay = Math.random() * 3;
+                star.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;animation-duration:${duration}s;animation-delay:${delay}s;`;
+                starfield.appendChild(star);
+            }
+            // 流星
+            setInterval(() => {
+                if (document.documentElement.getAttribute('data-theme') !== 'dark') return;
+                const shoot = document.createElement('div');
+                shoot.className = 'shooting-star';
+                shoot.style.cssText = `top:${Math.random()*40}%;left:${Math.random()*60+30}%;animation:shoot 1.5s ease-out;`;
+                starfield.appendChild(shoot);
+                setTimeout(() => shoot.remove(), 1600);
+            }, 5000);
+        }
+        createStars();
+
+        /* ===== 隐藏已评分CI ===== */
+        let ratedHidden = false;
+        const toggleBtn = document.getElementById('toggleRatedBtn');
+        const toggleText = document.getElementById('toggleText');
+        toggleBtn.addEventListener('click', () => {
+            const ratedCards = document.querySelectorAll('.ci-card.has-rating');
+            if (ratedCards.length === 0) {
+                showFlash('暂无已评分的CI');
+                return;
+            }
+            ratedHidden = !ratedHidden;
+            ratedCards.forEach(card => {
+                if (ratedHidden) {
+                    card.classList.add('hidden-rated');
+                } else {
+                    card.classList.remove('hidden-rated');
+                }
+            });
+            if (ratedHidden) {
+                toggleBtn.classList.add('active');
+                toggleText.textContent = '显示已评分';
+                toggleBtn.querySelector('.icon').textContent = '👁️‍🗨️';
+                showUndoBar(`已隐藏 ${ratedCards.length} 个已评分CI`, () => {
+                    toggleBtn.click();
+                });
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleText.textContent = '隐藏已评分';
+                toggleBtn.querySelector('.icon').textContent = '👁️';
+            }
+        });
+
+        /* ===== 撤销提示条 ===== */
+        function showUndoBar(message, undoCallback) {
+            const existing = document.querySelector('.undo-bar');
+            if (existing) existing.remove();
+            const bar = document.createElement('div');
+            bar.className = 'undo-bar';
+            bar.innerHTML = `<span>${message}</span><button id="undoBtn">撤销</button>`;
+            document.body.appendChild(bar);
+            const timer = setTimeout(() => bar.remove(), 5000);
+            bar.querySelector('#undoBtn').addEventListener('click', () => {
+                clearTimeout(timer);
+                bar.remove();
+                undoCallback();
+            });
+        }
+
+        /* ===== 提示弹窗 ===== */
+        function showFlash(msg) {
+            const flash = document.createElement('div');
+            flash.className = 'success-flash';
+            flash.textContent = msg;
+            document.body.appendChild(flash);
+            setTimeout(() => { flash.style.opacity = '0'; flash.style.transform = 'translateX(100px)'; setTimeout(() => flash.remove(), 300); }, 2000);
+        }
+
+        /* ===== 图表 ===== */
+        let levelChart, scoreChart;
+        function getChartColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                text: isDark ? '#a0aab5' : '#555',
+                grid: isDark ? 'rgba(100,149,237,0.1)' : 'rgba(0,0,0,0.06)',
+                palette: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0']
+            };
+        }
+        function initCharts() {
+            fetch('/api/stats').then(r => r.json()).then(data => {
+                const colors = getChartColors();
+                // CI级别分布 - 饼图
+                levelChart = new Chart(document.getElementById('levelChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.level_dist.map(d => d.name),
+                        datasets: [{ data: data.level_dist.map(d => d.value), backgroundColor: colors.palette, borderWidth: 2, borderColor: colors.grid }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: colors.text, font: { size: 11 } } } },
+                        animation: { animateRotate: true, duration: 1000 }
+                    }
+                });
+                // AI评分区间 - 柱状图
+                scoreChart = new Chart(document.getElementById('scoreChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.score_dist.map(d => d.name),
+                        datasets: [{ label: 'CI数量', data: data.score_dist.map(d => d.value), backgroundColor: colors.palette[0], borderRadius: 6 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { ticks: { color: colors.text }, grid: { color: colors.grid } }, x: { ticks: { color: colors.text }, grid: { display: false } } },
+                        animation: { duration: 800 }
+                    }
+                });
+            }).catch(err => console.error('图表加载失败:', err));
+        }
+        function updateChartsTheme() {
+            if (levelChart) levelChart.destroy();
+            if (scoreChart) scoreChart.destroy();
+            initCharts();
+        }
+        initCharts();
+
+        /* ===== 星级评分组件 ===== */
         class StarRating {
             constructor(container) {
                 this.container = container;
@@ -191,9 +577,9 @@
                 this.stars = container.querySelectorAll('.star');
                 this.avgDisplay = document.getElementById(`avg-${this.ciId}`);
                 this.countDisplay = document.getElementById(`count-${this.ciId}`);
+                this.card = document.getElementById(`ci-${this.ciId}`);
                 this.init();
             }
-
             init() {
                 this.loadRatingCount();
                 this.wrappers.forEach((wrapper, index) => {
@@ -202,148 +588,94 @@
                     wrapper.addEventListener('click', () => this.handleClick(index));
                 });
             }
-
             handleMouseEnter(index) {
                 this.stars.forEach((star, i) => {
-                    if (i <= index) {
-                        star.classList.remove('inactive', 'active-filled');
-                        star.classList.add('hover');
-                    } else {
-                        star.classList.remove('hover', 'active-filled');
-                        star.classList.add('inactive');
-                    }
+                    if (i <= index) { star.classList.remove('inactive', 'active-filled'); star.classList.add('hover'); }
+                    else { star.classList.remove('hover', 'active-filled'); star.classList.add('inactive'); }
                 });
             }
-
             handleMouseLeave() {
                 this.stars.forEach((star, i) => {
-                    if (i < this.currentRating) {
-                        star.classList.remove('inactive', 'hover');
-                        star.classList.add('active-filled');
-                    } else {
-                        star.classList.remove('hover', 'active-filled');
-                        star.classList.add('inactive');
-                    }
+                    if (i < this.currentRating) { star.classList.remove('inactive', 'hover'); star.classList.add('active-filled'); }
+                    else { star.classList.remove('hover', 'active-filled'); star.classList.add('inactive'); }
                 });
             }
-
             handleClick(index) {
                 const newRating = index + 1;
-                if (newRating === this.currentRating) {
-                    this.cancelRating();
-                } else {
-                    this.submitRating(newRating);
-                }
+                if (newRating === this.currentRating) { this.cancelRating(); } else { this.submitRating(newRating); }
             }
-
             submitRating(rating) {
                 this.stars.forEach((star, i) => {
-                    if (i < rating) {
-                        star.classList.remove('inactive', 'hover');
-                        star.classList.add('voting');
-                        setTimeout(() => star.classList.add('active-filled'), 200);
-                    } else {
-                        star.classList.remove('hover', 'active-filled');
-                        star.classList.add('inactive');
-                    }
+                    if (i < rating) { star.classList.remove('inactive', 'hover'); star.classList.add('voting'); setTimeout(() => star.classList.add('active-filled'), 200); }
+                    else { star.classList.remove('hover', 'active-filled'); star.classList.add('inactive'); }
                 });
-
-                fetch(`/rate/${this.ciId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `rating=${rating}&comment=`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        this.currentRating = rating;
-                        this.stars.forEach(star => star.classList.remove('voting'));
-                        this.showSuccessFlash(rating);
-                        this.updateRatingStats();
-                    } else {
-                        this.handleMouseLeave();
-                        console.error('评分失败:', data.message);
-                    }
-                })
-                .catch(() => {
-                    this.handleMouseLeave();
-                });
+                fetch(`/rate/${this.ciId}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `rating=${rating}&comment=` })
+                    .then(r => r.json()).then(data => {
+                        if (data.success) {
+                            const wasUnrated = this.currentRating === 0;
+                            this.currentRating = rating;
+                            this.stars.forEach(s => s.classList.remove('voting'));
+                            this.showSuccessFlash(rating);
+                            this.updateRatingStats();
+                            if (wasUnrated) { this.card.classList.add('has-rating'); this.addRatedBadge(rating); }
+                        } else { this.handleMouseLeave(); }
+                    }).catch(() => this.handleMouseLeave());
             }
-
+            addRatedBadge(rating) {
+                const title = this.card.querySelector('.ci-title');
+                if (!title.querySelector('.rated-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'rated-badge';
+                    badge.textContent = `已评分 ${rating}★`;
+                    title.appendChild(badge);
+                }
+            }
             cancelRating() {
-                fetch(`/rate/${this.ciId}`, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
+                fetch(`/rate/${this.ciId}`, { method: 'DELETE' }).then(r => r.json()).then(data => {
                     if (data.success) {
                         this.currentRating = 0;
-                        this.stars.forEach(star => {
-                            star.classList.remove('active-filled', 'voting');
-                            star.classList.add('inactive');
-                        });
+                        this.stars.forEach(s => { s.classList.remove('active-filled', 'voting'); s.classList.add('inactive'); });
                         this.showSuccessFlash(0);
                         this.updateRatingStats();
+                        this.card.classList.remove('has-rating');
+                        const badge = this.card.querySelector('.rated-badge');
+                        if (badge) badge.remove();
                     }
                 });
             }
-
             loadRatingCount() {
-                fetch(`/api/ratings/${this.ciId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.rating_count !== undefined) {
-                        this.animateNumber(this.countDisplay, 0, data.rating_count);
-                    }
+                fetch(`/api/ratings/${this.ciId}`).then(r => r.json()).then(data => {
+                    if (data.rating_count !== undefined) this.animateNumber(this.countDisplay, 0, data.rating_count);
                 });
             }
-
             updateRatingStats() {
-                fetch(`/api/ratings/${this.ciId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.avg_rating !== null) {
-                        this.animateNumber(this.avgDisplay, this.avgRating, data.avg_rating, 1);
-                        this.avgRating = data.avg_rating;
-                    }
-                    if (data.rating_count !== undefined) {
-                        this.animateNumber(this.countDisplay, parseInt(this.countDisplay.textContent), data.rating_count);
-                    }
+                fetch(`/api/ratings/${this.ciId}`).then(r => r.json()).then(data => {
+                    if (data.avg_rating !== null) { this.animateNumber(this.avgDisplay, this.avgRating, data.avg_rating, 1); this.avgRating = data.avg_rating; }
+                    if (data.rating_count !== undefined) this.animateNumber(this.countDisplay, parseInt(this.countDisplay.textContent), data.rating_count);
                 });
             }
-
             animateNumber(element, from, to, decimals = 0) {
-                const duration = 300;
-                const startTime = performance.now();
+                const duration = 300, startTime = performance.now();
                 const animate = (currentTime) => {
-                    const elapsed = currentTime - startTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    const easeOut = 1 - Math.pow(1 - progress, 3);
-                    const current = from + (to - from) * easeOut;
+                    const elapsed = currentTime - startTime, progress = Math.min(elapsed / duration, 1);
+                    const easeOut = 1 - Math.pow(1 - progress, 3), current = from + (to - from) * easeOut;
                     element.textContent = decimals > 0 ? current.toFixed(decimals) : Math.round(current);
-                    if (progress < 1) {
-                        requestAnimationFrame(animate);
-                    }
+                    if (progress < 1) requestAnimationFrame(animate);
                 };
                 requestAnimationFrame(animate);
             }
-
             showSuccessFlash(rating) {
-                const flash = document.createElement('div');
-                flash.className = 'success-flash';
-                flash.textContent = rating > 0 ? `评分成功！${rating}星 (${rating * 20}分)` : '已取消评分';
-                document.body.appendChild(flash);
-                setTimeout(() => {
-                    flash.style.opacity = '0';
-                    flash.style.transform = 'translateX(100px)';
-                    setTimeout(() => flash.remove(), 300);
-                }, 2000);
+                showFlash(rating > 0 ? `评分成功！${rating}星 (${rating * 20}分)` : '已取消评分');
             }
         }
+        document.querySelectorAll('.stars').forEach(container => new StarRating(container));
 
-        document.querySelectorAll('.stars').forEach(container => {
-            new StarRating(container);
+        /* ===== 页面加载完成 ===== */
+        window.addEventListener('load', () => {
+            setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 300);
         });
+        /* 平滑滚动 */
+        document.documentElement.style.scrollBehavior = 'smooth';
     </script>
 </body>
 </html>
